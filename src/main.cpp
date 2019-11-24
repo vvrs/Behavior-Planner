@@ -29,7 +29,7 @@ int main() {
     // Waypoint map to read from
     string map_file_ = "../data/highway_map.csv";
     // The max s value before wrapping around the track back to 0
-    double max_s = 6945.554;
+//    double max_s = 6945.554;
 
     std::ifstream in_map_(map_file_.c_str(), std::ifstream::in);
 
@@ -67,11 +67,11 @@ int main() {
         // "42" at the start of the message means there's a websocket message event.
         // The 4 signifies a websocket message
         // The 2 signifies a websocket event
-        if (length && length > 2 && data[0] == '4' && data[1] == '2') {
+        if (length > 2 && data[0] == '4' && data[1] == '2') {
 
             auto s = hasData(data);
 
-            if (s != "") {
+            if (!s.empty()) {
                 auto j = json::parse(s);
 
                 string event = j[0].get<string>();
@@ -210,7 +210,7 @@ int main() {
 
                     // Fill in the points inbetween the beginning and end of the spline
                     double target_x = 30.0;
-                    double target_y = s(target_x);
+                    double target_y = spl(target_x);
                     double target_dist = sqrt(target_x * target_x + target_y * target_y);
 
                     double x_add_on = 0;
@@ -235,7 +235,9 @@ int main() {
                         next_x_vals.push_back(x_point);
                         next_y_vals.push_back(y_point);
                     }
-
+//                    std::cout << next_x_vals.size() << std::endl;
+//                    std::cout << next_y_vals.size() << std::endl;
+//                    std::cout << "--------\n";
                     msgJson["next_x"] = next_x_vals;
                     msgJson["next_y"] = next_y_vals;
 

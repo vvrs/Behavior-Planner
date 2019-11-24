@@ -39,9 +39,9 @@ void Planner::resetPlannerInfo_() {
     nextTarget.ref_v = ref_speed;
     nextTarget.lane = ref_lane;
 
-    collisionInfo.dist_to_colli_front = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
-    collisionInfo.dist_to_colli_back = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
-    collisionInfo.spd_of_colli = {FREE_VEL, FREE_VEL, FREE_VEL};
+    collisionInfo.front_collision_distance = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
+    collisionInfo.rear_collision_distance = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
+    collisionInfo.collion_velocity = {FREE_VEL, FREE_VEL, FREE_VEL};
 }
 
 void Planner::nextFSMState(const std::vector<std::vector<double>> &sensor_info) {
@@ -55,12 +55,12 @@ void Planner::nextFSMState(const std::vector<std::vector<double>> &sensor_info) 
     // Update the behavior
     updatePlannerInfo_(state);
 
-    double collision_speed = collisionInfo.spd_of_colli[ref_lane];
-    double collision_dist = collisionInfo.dist_to_colli_front[ref_lane];
+    double collision_speed = collisionInfo.collion_velocity[ref_lane];
+    double collision_dist = collisionInfo.front_collision_distance[ref_lane];
 
-    if(collision_dist > SAFE_DIST && collision_speed > ref_speed && ref_speed < MAX_VEL){
+    if (collision_dist > SAFE_DIST && collision_speed > ref_speed && ref_speed < MAX_VEL) {
         nextTarget.ref_v += MAX_ACCL;
-    } else if(collision_dist < 30 && ref_speed > collision_speed && ref_speed > 0){
+    } else if (collision_dist < 30 && ref_speed > collision_speed && ref_speed > 0) {
         nextTarget.ref_v -= MAX_DECEL;
     }
 
@@ -88,11 +88,12 @@ std::vector<States> Planner::getSuccessors_() {
 }
 
 void Planner::updateCollisionInfo_(const std::vector<std::vector<double>> &sensor_info) {
-    for (const auto & traffic_info : sensor_info) {
+    for (const auto &traffic_info : sensor_info) {
         float traffic_d = traffic_info[6]; // d of current car (other traffic participant) being considered
 
         // In-lane traffic
-        if (traffic_d < (2 + LANE_WIDTH * (double) ref_lane + 2) && traffic_d > (2 + LANE_WIDTH * (double) ref_lane - 2)) {
+        if (traffic_d < (2 + LANE_WIDTH * (double) ref_lane + 2) &&
+            traffic_d > (2 + LANE_WIDTH * (double) ref_lane - 2)) {
             double vx = traffic_info[3];
             double vy = traffic_info[LANE_WIDTH];
             double check_speed = sqrt(vx * vx + vy * vy);
@@ -100,15 +101,15 @@ void Planner::updateCollisionInfo_(const std::vector<std::vector<double>> &senso
             check_car_s += (double) deltat * check_speed;
 
             if ((check_car_s > s) && (check_car_s - s < SAFE_DIST)) {
-                collisionInfo.dist_to_colli_front[ref_lane] = (check_car_s - s);
-                collisionInfo.spd_of_colli[ref_lane] = check_speed;
+                collisionInfo.front_collision_distance[ref_lane] = (check_car_s - s);
+                collisionInfo.collion_velocity[ref_lane] = check_speed;
             } else if ((check_car_s < s) && (s - check_car_s < SAFE_DIST)) {
-                collisionInfo.dist_to_colli_back[ref_lane] = (s - check_car_s);
+                collisionInfo.rear_collision_distance[ref_lane] = (s - check_car_s);
             }
         }/*Left-lane Traffic*/else if (traffic_d < ((LANE_WIDTH * (double) ref_lane))) {
             // get lane of the current traffic participant being considered
             int lane_num = (traffic_d < ((double) ref_lane - 1) * LANE_WIDTH) ? ref_lane - 2 : ref_lane - 1;
-
+            if (lane_num > 2) std::cout << lane_num << std::endl;
             double vx = traffic_info[3];
             double vy = traffic_info[LANE_WIDTH];
             double check_speed = sqrt(vx * vx + vy * vy);
@@ -117,15 +118,19 @@ void Planner::updateCollisionInfo_(const std::vector<std::vector<double>> &senso
             // Predict distance, given current speed (constant velocity model)
             check_car_s += (double) deltat * check_speed;
             if ((check_car_s - s) < 0) { // car at left lane behind us
-                if ((s - check_car_s) > LANE_CHANGE_THRESHOLD) continue; // collision will not happen,safe to change lane
-                else collisionInfo.dist_to_colli_back[lane_num] = (s - check_car_s);
+                if ((s - check_car_s) > LANE_CHANGE_THRESHOLD)
+                    continue; // collision will not happen,safe to change lane
+                else collisionInfo.rear_collision_distance[lane_num] = (s - check_car_s);
             } else if ((check_car_s - s) < SAFE_DIST) { // car at left lane is ahead us
-                collisionInfo.dist_to_colli_front[lane_num] = (check_car_s - s);
-                collisionInfo.spd_of_colli[lane_num] = check_speed;
+                collisionInfo.front_collision_distance[lane_num] = (check_car_s - s);
+                collisionInfo.collion_velocity[lane_num] = check_speed;
             }
-        } /*Right-lane traffic*/else if (traffic_d > (2 + (LANE_WIDTH * (double) ref_lane) - 2)) {
-            int lane_num = (traffic_d < ((double) ref_lane +2) * LANE_WIDTH) ? ref_lane + 2 : ref_lane + 1;
+        } /*Right-lane traffic*/else if (traffic_d > (2 + 4 * (double)ref_lane + 2)) {
 
+            int lane_num = (traffic_d > ((double) ref_lane + 2) * LANE_WIDTH) ? ref_lane + 2 : ref_lane + 1;
+
+            if(lane_num > 2)
+                std::cout << "lane number - " << lane_num << std::endl;
             double vx = traffic_info[3];
             double vy = traffic_info[LANE_WIDTH];
             double check_speed = sqrt(vx * vx + vy * vy);
@@ -133,11 +138,12 @@ void Planner::updateCollisionInfo_(const std::vector<std::vector<double>> &senso
 
             check_car_s += (double) deltat * check_speed;
             if ((check_car_s - s) < 0) { // car at right lane behind us
-                if ((s - check_car_s) > LANE_CHANGE_THRESHOLD) continue; // collision will not happen,safe to change lane
-                else collisionInfo.dist_to_colli_back[lane_num] = (s - check_car_s);
+                if ((s - check_car_s) > LANE_CHANGE_THRESHOLD)
+                    continue; // collision will not happen,safe to change lane
+                else collisionInfo.rear_collision_distance[lane_num] = (s - check_car_s);
             } else if ((check_car_s - s) < SAFE_DIST) {
-                collisionInfo.dist_to_colli_front[lane_num] = (check_car_s - s);
-                collisionInfo.spd_of_colli[lane_num] = check_speed;
+                collisionInfo.front_collision_distance[lane_num] = (check_car_s - s);
+                collisionInfo.collion_velocity[lane_num] = check_speed;
             }
         }
 
@@ -151,7 +157,7 @@ States Planner::findBestState_(std::vector<States> states, const std::vector<std
 
     double best_cost = std::numeric_limits<double>::max();
 
-    for (auto & state_ : states) {
+    for (auto &state_ : states) {
         updatePlannerInfo_(state_);
 
         // Decision depends on the state of the vehicle and traffic participants

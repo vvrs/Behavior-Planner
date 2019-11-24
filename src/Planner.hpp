@@ -8,12 +8,11 @@
 #include <random>
 #include <sstream>
 #include <fstream>
-#include <math.h>
+#include <cmath>
 #include <vector>
 #include <map>
 #include <string>
 #include <iterator>
-
 constexpr double DT = .02;
 constexpr double FREE_DISTANCE = 999.;
 constexpr double FREE_VEL = 49.5;
@@ -23,6 +22,8 @@ constexpr double MAX_ACCL = .224;
 constexpr double MAX_DECEL = .224;
 constexpr int LANE_WIDTH = 4;
 constexpr int LANE_CHANGE_THRESHOLD = 15;
+
+
 /**
  * KL - Keep Lane
  * LCL - Lane Change Left
@@ -72,9 +73,9 @@ public:
          * @struct collisionInfo
          * Keeps distance and speeds of vehicles in the right, current, and left lanes
          */
-        std::vector<double> dist_to_colli_front = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
-        std::vector<double> dist_to_colli_back = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
-        std::vector<double> spd_of_colli = {FREE_VEL, FREE_VEL, FREE_VEL};
+        std::vector<double> front_collision_distance = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
+        std::vector<double> rear_collision_distance = {FREE_DISTANCE, FREE_DISTANCE, FREE_DISTANCE};
+        std::vector<double> collion_velocity = {FREE_VEL, FREE_VEL, FREE_VEL};
     } collisionInfo;
 
     void update(double cx, double cy, double cs, double cd, double cyaw, double cvel, int lanenum, double targetVel,

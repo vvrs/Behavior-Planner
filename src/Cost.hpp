@@ -8,13 +8,14 @@
 #include <cmath>
 #include <vector>
 #include "Planner.hpp"
+#include "utils.hpp"
 
 class Cost {
 public:
-    const double DANGER = pow(10, 7);
-    const double REACH_GOAL = pow(10, 5);
-    const double EFFICIENCY = pow(10, 5);
-    const double COMFORT = pow(10, 4);
+    const double SAFE_DISTANCE_COST = pow(10, 7);
+    const double REACH_GOAL_COST = pow(10, 5);
+    const double EFFICIENCY_COST = pow(10, 5);
+    const double COMFORT_COST = pow(10, 4);
 
     std::vector<std::vector<double>> sensor_info;
     Planner* planner;
